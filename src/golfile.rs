@@ -1,55 +1,58 @@
-//! For interacting with files representing a Game of Life
-//!
-//! File extension being .gol
-//!
-//! (probably overengineered though it is very fun LOL)
-//!
-//! # File Format
-//! ## Prelude
-//!
-//! ### First 4 Bytes
-//! Characters `gol!`
-//! in ASCII encoding, which would be `0x67 0x6F 0x6C 0x21`
-//!
-//! ### Next 4 Bytes
-//! The size of the grid in two
-//! u16 numbers, first the x and then the y
-//!
-//! ### Next 4 Bytes
-//! The updates per second
-//! in one f32 number
-//!
-//! ### Next 4 Bytes
-//! RGBA representing the color of the grid
-//!
-//! ### Next 4 Bytes
-//! Square size, an f32
-//!
-//! ### Next 8 Bytes
-//! RGBA representing the color of the square when it's "off"
-//! 
-//! ### Next 4 Bytes
-//! RGBA representing the color of the square when it's "on"
-//!
-//! ### Last 7 Bytes
-//! Represent the end of the Prelude,
-//! they should be an empty byte followed by `\gol!/`
-//! in ASCII encoding, or `0x5C 0x67 0x6F 0x6C 0x21 0x2F`
-//!
-//! ## Main Content
-//!
-//! Width of grid * height of grid of booleans
-//! representing all the squares.
-//! All the squares in the top row
-//! from left to right, then the second row and etcetera
-//!
-//! # Notes
-//!
-//! - I decided to make it completely big-endian,
-//!     that way moving files accross different endianness works
-//!     since the program will read big-endian regardless of host endianness,
-//!     but it also helps when seeing the files in an editor to not
-//!     think in backward bytes
+/*!
+For interacting with files representing a Game of Life
+
+Preferred extension being .gol
+
+(probably overengineered though it is very fun LOL)
+
+# File Format
+
+## Prelude
+
+### First 4 Bytes
+Characters `gol!`
+in ASCII encoding, which would be `0x67 0x6F 0x6C 0x21`
+
+### Next 4 Bytes
+The size of the grid in two
+u16 numbers, first the x and then the y
+
+### Next 4 Bytes
+The updates per second
+in one f32 number
+
+### Next 4 Bytes
+RGBA representing the color of the grid
+
+### Next 4 Bytes
+Square size, an f32
+
+### Next 4 Bytes
+RGBA representing the color of the square when it's "off"
+
+### Next 4 Bytes
+RGBA representing the color of the square when it's "on"
+
+### Last 7 Bytes
+Represent the end of the Prelude,
+they should be an empty byte followed by `\gol!/`
+in ASCII encoding, or `0x5C 0x67 0x6F 0x6C 0x21 0x2F`
+
+## Main Content
+
+Width of grid * height of grid of booleans
+representing all the squares.
+All the squares in the top row
+from left to right, then the second row and etcetera
+
+# Notes
+
+- I decided to make it completely big-endian,
+    that way moving files accross different endianness works
+    since the program will read big-endian regardless of host endianness,
+    but it also helps when seeing the files in an editor to not
+    think in backward bytes
+*/
 
 use std::array::TryFromSliceError;
 use std::fs::{self, File};
