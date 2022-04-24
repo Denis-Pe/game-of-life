@@ -1,8 +1,10 @@
-// Vertex shader
-
 struct SquareInfo {
     [[location(0)]] color: vec4<f32>;
+    [[location(1)]] translation: vec2<f32>;
+    [[location(2)]] scale: f32;
+    [[location(3)]] corner_radius: f32;
 };
+
 [[group(0), binding(0)]]
 var<uniform> square_info: SquareInfo;
 
@@ -10,19 +12,29 @@ struct VertexOutput {
     [[builtin(position)]] clip_position: vec4<f32>;
 };
 
+// Vertex shader main
 [[stage(vertex)]]
 fn vs_main(
-    [[builtin(vertex_index)]] in_vertex_index: u32,
+    [[location(0)]] vertex_pos: vec2<f32>,
+    [[location(1)]] instance_pos: vec2<u32>
 ) -> VertexOutput {
     var out: VertexOutput;
-    let x = f32(1 - i32(in_vertex_index)) * 0.5;
-    let y = f32(i32(in_vertex_index & 1u) * 2 - 1) * 0.5;
-    out.clip_position = vec4<f32>(x, y, 0.0, 1.0);
+
+    var position: vec2<f32> = vertex_pos;
+
+    let distance_ratio = vec2<f32>(abs(vertex_pos.x) * 2.0, abs(vertex_pos.y) * 2.0);
+
+    position = position * square_info.scale;
+    position = 
+        position 
+        + square_info.translation 
+        + vec2<f32>(f32(instance_pos.x), f32(instance_pos.y)) * distance_ratio;
+
+    out.clip_position = vec4<f32>(position, 0.0, 1.0);
     return out;
 }
 
-// Fragment shader
-
+// Fragment shader main
 [[stage(fragment)]]
 fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
     return square_info.color;

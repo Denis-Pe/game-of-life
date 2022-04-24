@@ -17,7 +17,7 @@ fn main() {
     let window = WindowBuilder::new()
         .with_title("Conway's Game of Life")
         .with_min_inner_size(winit::dpi::LogicalSize {
-            width: 800u32,
+            width: 450u32,
             height: 450u32,
         })
         .build(&event_loop)
@@ -72,10 +72,12 @@ fn main() {
 
             WindowEvent::Resized(physical_size) => {
                 wgpu_state.resize(*physical_size);
+                grid.resize(*physical_size);
             }
 
             WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                 wgpu_state.resize(**new_inner_size);
+                grid.resize(**new_inner_size);
             }
 
             _ => {}
