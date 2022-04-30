@@ -14,7 +14,7 @@ I wanted to use this project to achieve a certain set of goals:
 - To make it fancy; the objective is to have it be very customizable and easy to use
 - All in all, I want to be able to have absolutely enormous grids in any computer that does not necessarily have the latest hardware available. I do not know if it will be possible even with the most optimized Game of Life, but I at least want tools that give me the peace of mind that it's really not possible and that there isn't something wrong with the tool if in the end it is not a possibility to achieve that
 
-Hence Rust and [wgpu](https://github.com/gfx-rs/wgpu), aside from the other reason I already mentioned
+Hence [Rust](https://www.rust-lang.org/) and [wgpu](https://github.com/gfx-rs/wgpu), aside from the other reason I already mentioned
 
 ### Working On
 
