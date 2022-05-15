@@ -24,4 +24,4 @@ Hence [Rust](https://www.rust-lang.org/) and [wgpu](https://github.com/gfx-rs/wg
 
 #### Long Term
 
-- Solution to current lack of dynamic instance buffers in wgpu leading to waste of memory, going against clear goals. Switch everything to C++ and D3D?
+- Solution to current lack of dynamic instance buffers in wgpu, leading to bad memory usage
