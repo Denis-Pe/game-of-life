@@ -18,5 +18,5 @@ Hence [Rust](https://www.rust-lang.org/) and [wgpu](https://github.com/gfx-rs/wg
 
 ### To-Do
 
-- Getting the squares to draw with a nice corner radius=
+- Getting the squares to draw with a nice corner radius
 - Solution to current lack of dynamic instance buffers in wgpu, leading to bad memory usage
