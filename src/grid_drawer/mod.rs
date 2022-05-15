@@ -7,12 +7,7 @@ use buffers::*;
 
 use std::rc::Rc;
 
-const DEFAULT_GRID_SIZE: u16 = 25; // 25 x 25
-
-// Max grid size is 1,000 x 1,000
-// 8 lovely megabytes (1,000,000 * 2 * 4)
-// of grid positions
-const INSTANCE_DATA_LENGTH: usize = 1_000 * 1_000;
+const DEFAULT_GRID_SIZE: u16 = 5; // 5 x 5
 
 #[derive(Debug)]
 pub struct GridDrawer {
@@ -25,7 +20,9 @@ pub struct GridDrawer {
     sqind_buf: Buffer,
     sqinfo: SquareInfo,
     sqinfo_buf: Buffer,
-    instances: Vec<buffers::Instance>, // Vector of positions (x, y)
+    // Vector of positions (x, y)
+    // This also keeps track of the length of the grid implicitly
+    instances: Vec<buffers::Instance>,
     instance_buf: Buffer,
 }
 
@@ -138,11 +135,13 @@ impl GridDrawer {
                 usage: BufferUsages::INDEX,
             });
 
-        let mut instances = Vec::with_capacity(INSTANCE_DATA_LENGTH);
+        let mut instances = Vec::with_capacity((DEFAULT_GRID_SIZE * DEFAULT_GRID_SIZE) as usize);
 
         for row in 0..DEFAULT_GRID_SIZE {
             for column in 0..DEFAULT_GRID_SIZE {
-                instances.push(buffers::Instance { pos: [column as u32, row as u32] });
+                instances.push(buffers::Instance {
+                    pos: [column as u32, row as u32],
+                });
             }
         }
 
@@ -198,7 +197,7 @@ impl GridDrawer {
         render_pass.set_vertex_buffer(0, self.sqvert_buf.slice(..));
         render_pass.set_vertex_buffer(1, self.instance_buf.slice(..));
         render_pass.set_index_buffer(self.sqind_buf.slice(..), IndexFormat::Uint16);
-        render_pass.draw_indexed(0..6, 0, 0..25*25);
+        render_pass.draw_indexed(0..6, 0, 0..self.instances.len() as u32);
 
         drop(render_pass);
 
@@ -257,16 +256,13 @@ impl GridDrawer {
 
     fn write_sqbuffer_vertices(&self, offsets: &[BufferAddress], value: f32) {
         for offset in offsets.iter() {
-            self.queue.write_buffer(
-                &self.sqvert_buf,
-                *offset,
-                bytemuck::cast_slice(&[value])
-            );
+            self.queue
+                .write_buffer(&self.sqvert_buf, *offset, bytemuck::cast_slice(&[value]));
         }
     }
 
-    pub fn resize(&self, new_size: winit::dpi::PhysicalSize<u32>) {
-        // The offsets to reach the x components of the vertices that are to the left 
+    pub fn resize_window(&self, new_size: winit::dpi::PhysicalSize<u32>) {
+        // The offsets to reach the x components of the vertices that are to the left
         const BUF_LEFT_X_OFFSETS: [BufferAddress; 2] = [0, 8];
         // Same but right
         const BUF_RIGHT_X_OFFSETS: [BufferAddress; 2] = [16, 24];
@@ -289,5 +285,20 @@ impl GridDrawer {
             self.write_sqbuffer_vertices(&BUF_UPPER_Y_OFFSETS, DEFAULT_UPPER * aspect_ratio);
             self.write_sqbuffer_vertices(&BUF_LOWER_Y_OFFSETS, DEFAULT_LOWER * aspect_ratio);
         }
+    }
+
+    pub fn resize_grid(&mut self, grid_size: u32) {
+        for row in 0..grid_size {
+            for column in 0..grid_size {
+                self.instances
+                    .push(buffers::Instance { pos: [column, row] });
+            }
+        }
+
+        self.instance_buf = self.device.create_buffer_init(&util::BufferInitDescriptor {
+            label: Some("grid_drawer_instance_buffer"),
+            contents: bytemuck::cast_slice(&self.instances),
+            usage: BufferUsages::VERTEX,
+        });
     }
 }
