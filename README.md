@@ -18,5 +18,4 @@ Hence [Rust](https://www.rust-lang.org/) and [wgpu](https://github.com/gfx-rs/wg
 
 ### Working On
 
-- Getting the squares to draw nicely with the corner radius
-- Polishing the squares' positioning
+- Getting the squares to draw with a nice corner radius
