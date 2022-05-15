@@ -22,13 +22,14 @@ fn vs_main(
 
     var position: vec2<f32> = vertex_pos;
 
-    let distance_ratio = vec2<f32>(abs(vertex_pos.x) * 2.0, abs(vertex_pos.y) * 2.0);
+    // the x and y distances between the squares
+    let distance = vec2<f32>(abs(vertex_pos.x) * 2.0, abs(vertex_pos.y) * 2.0);
 
     position = position * square_info.scale;
     position = 
         position 
         + square_info.translation 
-        + vec2<f32>(f32(instance_pos.x), f32(instance_pos.y)) * distance_ratio;
+        + vec2<f32>(f32(instance_pos.x), f32(instance_pos.y)) * distance;
 
     out.clip_position = vec4<f32>(position, 0.0, 1.0);
     return out;
