@@ -18,10 +18,10 @@ Hence [Rust](https://www.rust-lang.org/) and [wgpu](https://github.com/gfx-rs/wg
 
 ### To-Do
 
-##### Short Term
+#### Short Term
 
 - Getting the squares to draw with a nice corner radius
 
-##### Long Term
+#### Long Term
 
 - Solution to current lack of dynamic instance buffers in wgpu leading to waste of memory, going against clear goals. Switch everything to C++ and D3D?
