@@ -9,21 +9,35 @@ use std::rc::Rc;
 
 const DEFAULT_GRID_SIZE: u16 = 5; // 5 x 5
 
+// Conveniency function to not type that conversion
+// all the time
+fn color_to_arr(color: Color) -> [f32; 4] {
+    [
+        color.r as f32,
+        color.g as f32,
+        color.b as f32,
+        color.a as f32,
+    ]
+}
+
 #[derive(Debug)]
 pub struct GridDrawer {
+    // The wgpu stuff
     surface: Rc<Surface>,
     device: Rc<Device>,
     queue: Rc<Queue>,
     render_pipeline: RenderPipeline,
     bind_group: BindGroup,
+    // Crucial buffers
     sqvert_buf: Buffer,
     sqind_buf: Buffer,
-    sqinfo: SquareInfo,
-    sqinfo_buf: Buffer,
     // Vector of positions (x, y)
     // This also keeps track of the length of the grid implicitly
     instances: Vec<buffers::Instance>,
     instance_buf: Buffer,
+    // Uniform buffers
+    sqinfo: SquareInfo,
+    sqinfo_buf: Buffer,
 }
 
 impl GridDrawer {
@@ -50,25 +64,29 @@ impl GridDrawer {
             .device
             .create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: None,
-                entries: &[BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::all(),
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::all(),
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                ],
             });
 
         let bind_group = state.device.create_bind_group(&BindGroupDescriptor {
             label: None,
             layout: &bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: sqinfo_buf.as_entire_binding(),
-            }],
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: sqinfo_buf.as_entire_binding(),
+                },
+            ],
         });
 
         let render_pipeline_layout =
@@ -164,7 +182,7 @@ impl GridDrawer {
             sqinfo_buf,
             sqinfo,
             instances,
-            instance_buf,
+            instance_buf
         }
     }
 
@@ -278,12 +296,17 @@ impl GridDrawer {
 
         let aspect_ratio = new_size.width as f32 / new_size.height as f32;
 
+        let mut right = DEFAULT_RIGHT;
+        let mut lower = DEFAULT_LOWER;
+
         if aspect_ratio > 1.0 {
             self.write_sqbuffer_vertices(&BUF_LEFT_X_OFFSETS, DEFAULT_LEFT / aspect_ratio);
             self.write_sqbuffer_vertices(&BUF_RIGHT_X_OFFSETS, DEFAULT_RIGHT / aspect_ratio);
+            right /= aspect_ratio;
         } else {
             self.write_sqbuffer_vertices(&BUF_UPPER_Y_OFFSETS, DEFAULT_UPPER * aspect_ratio);
             self.write_sqbuffer_vertices(&BUF_LOWER_Y_OFFSETS, DEFAULT_LOWER * aspect_ratio);
+            lower *= aspect_ratio;
         }
     }
 

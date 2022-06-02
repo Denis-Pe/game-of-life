@@ -5,17 +5,6 @@ use winit::window::Window;
 
 use std::rc::Rc;
 
-// Conveniency function to not type that conversion
-// all the time
-pub fn color_to_arr(color: Color) -> [f32; 4] {
-    [
-        color.r as f32,
-        color.g as f32,
-        color.b as f32,
-        color.a as f32,
-    ]
-}
-
 // Why Reference Counters?
 // I need shared ownership because
 // 1. Those three fields will be flying around

@@ -18,5 +18,11 @@ Hence [Rust](https://www.rust-lang.org/) and [wgpu](https://github.com/gfx-rs/wg
 
 ### To-Do
 
-- Getting the squares to draw with a nice corner radius
-- ~~Solution to current lack of dynamic instance buffers in wgpu, leading to bad memory usage~~
+#### Current
+
+- Zooming
+
+#### Postponed
+
+- Getting squares to draw with a nice corner radius
+  - To get it right in terms of both low-cost and also nice looks will require more time and investigation. This small thing is holding me back from doing more crucial things that require less time and investigation, I want to get to the juicy stuff already!
