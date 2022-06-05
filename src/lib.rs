@@ -65,7 +65,7 @@ impl WgpuState {
         }
     }
 
-    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize_window(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
@@ -119,7 +119,7 @@ impl WgpuState {
         match result {
             Ok(_) => {}
             Err(SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-            Err(SurfaceError::Lost) => self.resize(window.inner_size()),
+            Err(SurfaceError::Lost) => self.resize_window(window.inner_size()),
             Err(error) => eprintln!("{:?}", error),
         }
     }

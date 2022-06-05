@@ -20,7 +20,7 @@ Hence [Rust](https://www.rust-lang.org/) and [wgpu](https://github.com/gfx-rs/wg
 
 #### Current
 
-- Zooming
+- Graphical User Interface
 
 #### Postponed
 

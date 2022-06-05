@@ -38,11 +38,13 @@ pub struct GridDrawer {
     // Uniform buffers
     sqinfo: SquareInfo,
     sqinfo_buf: Buffer,
+    grid_zoom: GridZoom,
+    grid_zoom_buf: Buffer,
 }
 
 impl GridDrawer {
     pub fn new(state: &WgpuState) -> Self {
-        // --SHADER AND THE UNIFORM BUFFER-- \\
+        // --SHADER AND THE UNIFORM BUFFERS-- \\
 
         let shader = state
             .device
@@ -58,6 +60,16 @@ impl GridDrawer {
                 usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
             });
 
+        let grid_zoom = GridZoom { z: 1.0 };
+
+        let grid_zoom_buf = state
+            .device
+            .create_buffer_init(&util::BufferInitDescriptor {
+                label: Some("grid_zoom_buffer"),
+                contents: bytemuck::cast_slice(&[grid_zoom]),
+                usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
+            });
+
         // --BIND GROUP AND RENDER PIPELINE-- \\
 
         let bind_group_layout = state
@@ -66,8 +78,20 @@ impl GridDrawer {
                 label: None,
                 entries: &[
                     BindGroupLayoutEntry {
+                        // sqinfo
                         binding: 0,
                         visibility: ShaderStages::all(),
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        // grid_zoom
+                        binding: 1,
+                        visibility: ShaderStages::VERTEX,
                         ty: BindingType::Buffer {
                             ty: BufferBindingType::Uniform,
                             has_dynamic_offset: false,
@@ -83,8 +107,14 @@ impl GridDrawer {
             layout: &bind_group_layout,
             entries: &[
                 BindGroupEntry {
+                    // sqinfo
                     binding: 0,
                     resource: sqinfo_buf.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    // grid_zoom
+                    binding: 1,
+                    resource: grid_zoom_buf.as_entire_binding(),
                 },
             ],
         });
@@ -182,7 +212,9 @@ impl GridDrawer {
             sqinfo_buf,
             sqinfo,
             instances,
-            instance_buf
+            instance_buf,
+            grid_zoom,
+            grid_zoom_buf,
         }
     }
 
@@ -270,6 +302,21 @@ impl GridDrawer {
             bytemuck::cast_slice(&[corner_radius]),
         );
         self.sqinfo.corner_radius = corner_radius;
+    }
+
+    pub fn set_grid_zoom(&mut self, grid_zoom: f32) {
+        self.queue
+            .write_buffer(&self.grid_zoom_buf, 0, bytemuck::cast_slice(&[grid_zoom]));
+        self.grid_zoom.z = grid_zoom;
+    }
+
+    pub fn change_grid_zoom(&mut self, change: f32) {
+        self.queue.write_buffer(
+            &self.grid_zoom_buf,
+            0,
+            bytemuck::cast_slice(&[self.grid_zoom.z + change]),
+        );
+        self.grid_zoom.z += change;
     }
 
     fn write_sqbuffer_vertices(&self, offsets: &[BufferAddress], value: f32) {

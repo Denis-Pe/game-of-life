@@ -2,11 +2,18 @@ struct SquareInfo {
     [[location(0)]] color: vec4<f32>;
     [[location(1)]] translation: vec2<f32>;
     [[location(2)]] scale: f32;
-    [[location(3)]] corner_radius: f32; // CURRENTLY UNUSED
+    [[location(3)]] corner_radius: f32; // --CURRENTLY UNUSED--
 };
 
 [[group(0), binding(0)]]
 var<uniform> square_info: SquareInfo;
+
+struct GridZoom {
+    [[location(0)]] z: f32;
+};
+
+[[group(0), binding(1)]]
+var<uniform> zoom: GridZoom;
 
 struct VertexOutput {
     [[builtin(position)]] clip_position: vec4<f32>;
@@ -25,9 +32,9 @@ fn vs_main(
     // the x and y distances between the squares
     let distance = vec2<f32>(abs(vertex_pos.x) * 2.0, abs(vertex_pos.y) * 2.0);
 
-    let inst_pos_float = vec2<f32>(f32(instance_pos.x), f32(instance_pos.y)) * distance;
+    let inst_pos_float = vec2<f32>(f32(instance_pos.x), f32(instance_pos.y)) * distance * zoom.z;
 
-    position = position * square_info.scale;
+    position = position * square_info.scale * zoom.z;
     position = 
         position 
         + square_info.translation 

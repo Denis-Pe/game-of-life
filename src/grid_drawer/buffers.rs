@@ -69,3 +69,9 @@ impl Instance {
         }
     }
 }
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct GridZoom {
+    pub z: f32
+}

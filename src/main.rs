@@ -71,12 +71,12 @@ fn main() {
             }
 
             WindowEvent::Resized(physical_size) => {
-                wgpu_state.resize(*physical_size);
+                wgpu_state.resize_window(*physical_size);
                 grid.resize_window(*physical_size);
             }
 
             WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                wgpu_state.resize(**new_inner_size);
+                wgpu_state.resize_window(**new_inner_size);
                 grid.resize_window(**new_inner_size);
             }
 
