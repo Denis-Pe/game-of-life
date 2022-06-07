@@ -21,6 +21,7 @@ pub struct WgpuState {
     pub device: Rc<Device>,
     pub queue: Rc<Queue>,
     pub config: SurfaceConfiguration,
+    pub adapter: Adapter
 }
 
 impl WgpuState {
@@ -62,6 +63,7 @@ impl WgpuState {
             device: Rc::new(device),
             queue: Rc::new(queue),
             config,
+            adapter,
         }
     }
 
