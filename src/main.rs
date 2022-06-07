@@ -1,6 +1,8 @@
 mod grid_drawer;
 use grid_drawer::*;
 
+mod gui;
+
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
