@@ -2,6 +2,7 @@ mod grid_drawer;
 use grid_drawer::*;
 
 mod gui;
+use gui::*;
 
 use winit::{
     event::*,
@@ -29,62 +30,72 @@ fn main() {
 
     let grid = GridDrawer::new(&wgpu_state);
 
-    event_loop.run(move |event, _, control_flow| match event {
-        Event::RedrawRequested(window_id) if window_id == window.id() => {
-            match wgpu_state.surface.get_current_texture() {
-                Ok(surface_texture) => {
-                    let mut results = Vec::new();
+    let mut gui = Gui::new(&window, &wgpu_state);
 
-                    results.push(wgpu_state.clear_screen(
-                        Color {
-                            r: 0.1,
-                            g: 0.1,
-                            b: 0.1,
-                            a: 1.0,
-                        },
-                        &surface_texture,
-                    ));
+    event_loop.run(move |event, _, control_flow| {
+        match event {
+            Event::RedrawRequested(window_id) if window_id == window.id() => {
+                match wgpu_state.surface.get_current_texture() {
+                    Ok(surface_texture) => {
+                        let mut results = Vec::new();
 
-                    results.push(grid.draw(&surface_texture));
+                        results.push(wgpu_state.clear_screen(
+                            Color {
+                                r: 0.1,
+                                g: 0.1,
+                                b: 0.1,
+                                a: 1.0,
+                            },
+                            &surface_texture,
+                        ));
 
-                    if !results.iter().any(|result| result.is_err()) {
-                        surface_texture.present()
-                    } else {
-                        for result in results.into_iter() {
-                            wgpu_state.handle_render_result(result, control_flow, &window)
+                        results.push(grid.draw(&surface_texture));
+
+                        gui.draw(&window, &surface_texture);
+
+                        if !results.iter().any(|result| result.is_err()) {
+                            surface_texture.present()
+                        } else {
+                            for result in results.into_iter() {
+                                wgpu_state.handle_render_result(result, control_flow, &window)
+                            }
                         }
                     }
+
+                    Err(error) => {
+                        wgpu_state.handle_render_result(Err(error), control_flow, &window)
+                    }
+                };
+            }
+
+            Event::MainEventsCleared => {
+                window.request_redraw();
+            }
+
+            Event::WindowEvent {
+                ref event,
+                window_id,
+            } if window_id == window.id() => match event {
+                WindowEvent::CloseRequested => {
+                    *control_flow = ControlFlow::Exit;
                 }
 
-                Err(error) => wgpu_state.handle_render_result(Err(error), control_flow, &window),
-            };
-        }
+                WindowEvent::Resized(physical_size) => {
+                    wgpu_state.resize_window(*physical_size);
+                    grid.resize_window(*physical_size);
+                }
 
-        Event::MainEventsCleared => {
-            window.request_redraw();
-        }
+                WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                    wgpu_state.resize_window(**new_inner_size);
+                    grid.resize_window(**new_inner_size);
+                }
 
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window_id == window.id() => match event {
-            WindowEvent::CloseRequested => {
-                *control_flow = ControlFlow::Exit;
-            }
-
-            WindowEvent::Resized(physical_size) => {
-                wgpu_state.resize_window(*physical_size);
-                grid.resize_window(*physical_size);
-            }
-
-            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                wgpu_state.resize_window(**new_inner_size);
-                grid.resize_window(**new_inner_size);
-            }
+                _ => {}
+            },
 
             _ => {}
-        },
-
-        _ => {}
+        }
+        
+        gui.platform_event_handling(&window, &event)
     });
 }
