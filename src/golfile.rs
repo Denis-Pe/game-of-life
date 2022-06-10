@@ -36,7 +36,7 @@ RGBA representing the color of the square when it's "on"
 ### Last 7 Bytes
 Represent the end of the Prelude,
 they should be an empty byte followed by `\gol!/`
-in ASCII encoding, or `0x5C 0x67 0x6F 0x6C 0x21 0x2F`
+in ASCII encoding, or `0x00` followed by `0x5C 0x67 0x6F 0x6C 0x21 0x2F`
 
 ## Main Content
 
