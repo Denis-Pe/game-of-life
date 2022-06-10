@@ -1,9 +1,10 @@
 /*!
 For interacting with files representing a Game of Life
+and reading those settings in the file into the Settings struct
 
 Preferred extension being .gol
 
-(probably overengineered though it is very fun LOL)
+(probably overengineered though it is very fun to dev this LOL)
 
 # File Format
 
@@ -59,6 +60,8 @@ use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::Path;
 
+use super::{RGBA, Settings};
+
 const PRELUDE_LENGTH: usize =
 4+4+4+4
 +4+4+4
@@ -83,23 +86,8 @@ impl From<TryFromSliceError> for GOLFileError {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct RGBA(pub u8, pub u8, pub u8, pub u8);
-
-#[derive(Debug, Clone)]
-pub struct GOLFile {
-    pub squares: Vec<bool>,
-    pub squares_x: u16,
-    pub squares_y: u16,
-    pub updates_sec: f32,
-    pub grid_color: RGBA,
-    pub square_size: f32,
-    pub square_color_off: RGBA,
-    pub square_color_on: RGBA,
-}
-
-impl GOLFile {
-    pub fn read(path: impl AsRef<Path>) -> Result<Self, GOLFileError> {
+impl Settings {
+    pub fn read_from_file(path: impl AsRef<Path>) -> Result<Self, GOLFileError> {
         let mut output = Self {
             squares: Vec::new(),
             squares_x: 0,
@@ -163,7 +151,7 @@ impl GOLFile {
         Ok(output)
     }
 
-    pub fn write(&self, path: impl AsRef<Path>) -> Result<(), io::Error> {
+    pub fn write_in_file(&self, path: impl AsRef<Path>) -> Result<(), io::Error> {
         let mut file = File::create(path)?;
 
         file.write_all(b"gol!")?;
