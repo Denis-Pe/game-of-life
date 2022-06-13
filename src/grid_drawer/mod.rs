@@ -347,7 +347,6 @@ impl GridDrawer {
     }
 
     pub fn grid_zoom(&self) -> f32 {
-        println!("{}", self.grid_zoom.z);
         self.grid_zoom.z
     }
 
