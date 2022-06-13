@@ -29,26 +29,33 @@ pub const DEFAULT_SQUARE_VERTICES: [Vertex; 4] = [
 
 pub const DEFAULT_SQUARE_INDICES: [u16; 6] = [0, 1, 2, 3, 0, 2];
 
-// Perfect alignment for wgpu:
-// Color takes up 16 bytes
-// Translation + scale + corner radius = another 16
-// totaling 32
+// Alignment for wgpu:
+// Two colors taking up 16 bytes = 32
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SquareColors {
+    pub color_off: [f32; 4],
+    pub color_on: [f32; 4],
+}
+
+pub const SQCOLOR_OFF_OFFSET: BufferAddress = 0;
+pub const SQCOLOR_ON_OFFSET: BufferAddress = 16;
+
+// Alignment for wgpu:
+// Translation 8 + scale 4 + corner radius 4 = 16
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SquareInfo {
-    pub color: [f32; 4],
     pub translation: [f32; 2],
     pub scale: f32,
     pub corner_radius: f32,
 }
 
-pub const SQINFO_COLOR_OFFSET: BufferAddress = 0;
-pub const SQINFO_TRANSLATION_OFFSET: BufferAddress = 16;
-pub const SQINFO_SCALE_OFFSET: BufferAddress = 24;
-pub const SQINFO_CORNER_RADIUS_OFFSET: BufferAddress = 28;
+pub const SQINFO_TRANSLATION_OFFSET: BufferAddress = 0;
+pub const SQINFO_SCALE_OFFSET: BufferAddress = 8;
+pub const SQINFO_CORNER_RADIUS_OFFSET: BufferAddress = 12;
 
 pub const DEFAULT_SQUARE_INFO: SquareInfo = SquareInfo {
-    color: [0.0, 0.0, 0.1, 1.0],
     translation: [0.0, 0.0],
     scale: 0.95,
     corner_radius: 1.0,
@@ -57,6 +64,7 @@ pub const DEFAULT_SQUARE_INFO: SquareInfo = SquareInfo {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Instance {
+    // TODO: Use u16s
     pub pos: [u32; 2], // [0, 0] is the first square at the top-left
 }
 
@@ -73,5 +81,5 @@ impl Instance {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GridZoom {
-    pub z: f32
+    pub z: f32,
 }
