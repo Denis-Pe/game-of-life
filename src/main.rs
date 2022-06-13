@@ -18,6 +18,9 @@ use wgpu::*;
 
 use gol::*;
 
+const TRANSLATION_CONSTANT: f32 = 0.001;
+const ZOOMING_CONSTANT: f32 = 0.05;
+
 fn main() {
     env_logger::init();
     let event_loop = EventLoop::new();
@@ -40,6 +43,7 @@ fn main() {
 
     let mut last_cursor: Option<PhysicalPosition<f64>> = None;
     let mut mouse_held = false;
+    let mut control = false;
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -112,7 +116,7 @@ fn main() {
 
                 WindowEvent::MouseWheel { delta, .. } => {
                     if let MouseScrollDelta::LineDelta(_, y) = delta {
-                        grid.change_grid_zoom(y * 0.05);
+                        grid.change_grid_zoom(y * ZOOMING_CONSTANT);
                     }
                 }
 
@@ -127,10 +131,28 @@ fn main() {
                         };
 
                         if mouse_held {
-                            grid.translate_grid([delta.x * 0.001, -delta.y * 0.001]);
+                            let zoom_multiplier = if grid.grid_zoom() > 1.0 {
+                                1.0
+                            } else {
+                                1.0 / grid.grid_zoom()
+                            };
+
+                            grid.translate_grid([
+                                zoom_multiplier * delta.x * TRANSLATION_CONSTANT,
+                                zoom_multiplier * -delta.y * TRANSLATION_CONSTANT,
+                            ]);
                         }
                     }
                     last_cursor = Some(*new_position);
+                }
+
+                WindowEvent::ModifiersChanged(state) => control = state.ctrl(),
+
+                WindowEvent::KeyboardInput { input, .. } if control => {
+                    if let Some(VirtualKeyCode::R) = input.virtual_keycode {
+                        grid.set_grid_zoom(1.0);
+                        grid.set_grid_translation([0.0, 0.0]);
+                    }
                 }
 
                 _ => {}
