@@ -8,13 +8,28 @@ use wgpu::*;
 
 use std::rc::Rc;
 
+use crate::grid_drawer::*;
+use crate::settings::*;
+
+struct U32CharsFilter;
+impl InputTextCallbackHandler for U32CharsFilter {
+    fn char_filter(&mut self, c: char) -> Option<char> {
+        if "1234567890".chars().any(|character| character == c) {
+            Some(c)
+        } else {
+            None
+        }
+    }
+}
+
 pub struct Gui {
     device: Rc<Device>,
     queue: Rc<Queue>,
     context: Context,
     platform: WinitPlatform,
     renderer: Renderer,
-    demo_open: bool,
+    grid_columns: String,
+    grid_rows: String,
     last_cursor: Option<MouseCursor>,
 }
 
@@ -59,12 +74,19 @@ impl Gui {
             context,
             platform,
             renderer,
-            demo_open: true,
+            grid_columns: String::new(),
+            grid_rows: String::new(),
             last_cursor: None,
         }
     }
 
-    pub fn draw(&mut self, window: &winit::window::Window, surface_texture: &SurfaceTexture) {
+    pub fn draw(
+        &mut self,
+        window: &winit::window::Window,
+        surface_texture: &SurfaceTexture,
+        grid: &mut GridDrawer,
+        settings: &mut Settings,
+    ) {
         self.platform
             .prepare_frame(self.context.io_mut(), &window)
             .expect("Fatal error: failed to prepare frame");
@@ -72,29 +94,87 @@ impl Gui {
         let ui = self.context.frame();
 
         {
-            let window = Window::new("Hello world");
-            window
-                .size([300.0, 100.0], Condition::FirstUseEver)
+            let mut sqcolor_off = settings.sqcolor_off().to_f32();
+            let mut sqcolor_on = settings.sqcolor_on().to_f32();
+            let mut backgnd_clr = settings.background_color().to_f32();
+
+            let left_panel = Window::new("is it you?!");
+            left_panel
+                .title_bar(false)
+                .position([0.0, 0.0], Condition::Always)
+                .size(
+                    [200.0, window.inner_size().height as f32],
+                    Condition::Always,
+                )
+                .movable(false)
+                .resizable(false)
                 .build(&ui, || {
-                    ui.text("Hello world!");
-                    ui.text("This...is...imgui-rs on WGPU!");
+                    // --COLORS-- \\s
+
+                    ui.text("Square Color When Off");
+                    let changed = ColorEdit::new("On Squares Color Editing", &mut sqcolor_off)
+                        .label(false)
+                        .build(&ui);
+
+                    if changed {
+                        settings.set_sqcolor_off(RGBA::from_f32(sqcolor_off));
+                        grid.set_square_color_off(sqcolor_off);
+                    }
+
+                    ui.text("Square Color When On");
+                    let changed = ColorEdit::new("Off Squares Color Editing", &mut sqcolor_on)
+                        .label(false)
+                        .build(&ui);
+
+                    if changed {
+                        settings.set_sqcolor_on(RGBA::from_f32(sqcolor_on));
+                        grid.set_square_color_on(sqcolor_on);
+                    }
+
+                    ui.text("Background Color");
+                    let changed = ColorEdit::new("Background Color Editing", &mut backgnd_clr)
+                        .label(false)
+                        .build(&ui);
+
+                    if changed {
+                        settings.set_background_color(RGBA::from_f32(backgnd_clr));
+                    }
+
                     ui.separator();
-                    let mouse_pos = ui.io().mouse_pos;
-                    ui.text(format!(
-                        "Mouse Position: ({:.1},{:.1})",
-                        mouse_pos[0], mouse_pos[1]
-                    ));
-                });
 
-            let window = Window::new("Hello too");
-            window
-                .size([400.0, 200.0], Condition::FirstUseEver)
-                .position([400.0, 200.0], Condition::FirstUseEver)
-                .build(&ui, || {
-                    ui.text("HELLO WORLD!");
-                });
+                    // --GRID SIZE-- \\
 
-            ui.show_demo_window(&mut self.demo_open);
+                    ui.text("Grid X Dimension");
+                    let x_changed = InputText::new(&ui, "Cols", &mut self.grid_columns)
+                        .hint("Columns")
+                        .enter_returns_true(true)
+                        .callback(InputTextCallback::CHAR_FILTER, U32CharsFilter)
+                        .build();
+
+                    ui.text("Grid Y Dimension");
+                    let y_changed = InputText::new(&ui, "Rows", &mut self.grid_rows)
+                        .hint("Rows")
+                        .enter_returns_true(true)
+                        .callback(InputTextCallback::CHAR_FILTER, U32CharsFilter)
+                        .build();
+
+                    if x_changed || y_changed {
+                        let old_x = settings.squares_x() as u32;
+                        let old_y = settings.squares_y() as u32;
+
+                        let mut new_x = old_x;
+                        let mut new_y = old_y;
+
+                        if let Ok(columns) = self.grid_columns.parse::<u32>() {
+                            new_x = columns
+                        }
+                        if let Ok(rows) = self.grid_rows.parse::<u32>() {
+                            new_y = rows
+                        }
+
+                        grid.resize_grid(new_x, new_y)
+                    }
+                });
         }
 
         let mut encoder = self
