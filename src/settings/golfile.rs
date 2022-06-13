@@ -25,8 +25,14 @@ in one f32 number
 ### Next 4 Bytes
 RGBA representing the color of the grid
 
-### Next 4 Bytes
-Square size, an f32
+### Next 5 Bytes
+How the game should initially look like, which is represented
+in an enum kind of matter:
+- If the setting is fit the grid to screen, then the entire 5 bytes will be
+zeroed
+- If the setting is to look at the center with a certain amount of
+zoom, the five bytes will look like a zero byte followed
+by an f32 of zoom
 
 ### Next 4 Bytes
 RGBA representing the color of the square when it's "off"
@@ -60,12 +66,12 @@ use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::Path;
 
-use super::{RGBA, Settings};
+use super::*;
 
+#[rustfmt::skip]
 const PRELUDE_LENGTH: usize =
-4+4+4+4
-+4+4+4
-+7;
+4+4+4+4+
+5+4+4+7;
 
 #[derive(Debug)]
 pub enum GOLFileError {
@@ -93,10 +99,25 @@ impl Settings {
             squares_x: 0,
             squares_y: 0,
             updates_sec: 0.0,
-            grid_color: RGBA(0, 0, 0, 0),
-            square_size: 0.0,
-            square_color_off: RGBA(0, 0, 0, 0),
-            square_color_on: RGBA(0, 0, 0, 0),
+            background_color: RGBA {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 0,
+            },
+            starting_view: StartingView::FitGridToScreen,
+            square_color_off: RGBA {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 0,
+            },
+            square_color_on: RGBA {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 0,
+            },
         };
 
         let bytes = fs::read(path)?;
@@ -123,18 +144,33 @@ impl Settings {
             return Err(GOLFileError::NotValidFile);
         }
 
-        output.grid_color = RGBA(bytes[12], bytes[13], bytes[14], bytes[15]);
+        output.background_color = RGBA {
+            r: bytes[12],
+            g: bytes[13],
+            b: bytes[14],
+            a: bytes[15],
+        };
 
-        output.square_size = f32::from_be_bytes(bytes[16..20].try_into()?);
+        output.starting_view = StartingView::from_be_bytes(bytes[16..21].try_into()?)?;
 
-        output.square_color_off = RGBA(bytes[20], bytes[21], bytes[22], bytes[23]);
-        output.square_color_on = RGBA(bytes[24], bytes[25], bytes[26], bytes[27]);
+        output.square_color_off = RGBA {
+            r: bytes[21],
+            g: bytes[22],
+            b: bytes[23],
+            a: bytes[24],
+        };
+        output.square_color_on = RGBA {
+            r: bytes[25],
+            g: bytes[26],
+            b: bytes[27],
+            a: bytes[28],
+        };
 
-        if bytes[28] != 0 {
+        if bytes[29] != 0 {
             return Err(GOLFileError::NotValidFile);
         }
 
-        let last_six: [u8; 6] = bytes[29..35].try_into()?; // last of the prelude
+        let last_six: [u8; 6] = bytes[30..36].try_into()?; // last of the prelude
 
         if last_six != *b"\\gol!/" {
             return Err(GOLFileError::NotValidFile);
@@ -161,22 +197,13 @@ impl Settings {
 
         file.write_all(&self.updates_sec.to_be_bytes())?;
 
-        file.write_all(&self.grid_color.0.to_be_bytes())?;
-        file.write_all(&self.grid_color.1.to_be_bytes())?;
-        file.write_all(&self.grid_color.2.to_be_bytes())?;
-        file.write_all(&self.grid_color.3.to_be_bytes())?;
+        file.write_all(&self.background_color.to_be_bytes())?;
 
-        file.write_all(&self.square_size.to_be_bytes())?;
+        file.write_all(&self.starting_view.to_be_bytes())?;
 
-        file.write_all(&self.square_color_off.0.to_be_bytes())?;
-        file.write_all(&self.square_color_off.1.to_be_bytes())?;
-        file.write_all(&self.square_color_off.2.to_be_bytes())?;
-        file.write_all(&self.square_color_off.3.to_be_bytes())?;
+        file.write_all(&self.square_color_off.to_be_bytes())?;
 
-        file.write_all(&self.square_color_on.0.to_be_bytes())?;
-        file.write_all(&self.square_color_on.1.to_be_bytes())?;
-        file.write_all(&self.square_color_on.2.to_be_bytes())?;
-        file.write_all(&self.square_color_on.3.to_be_bytes())?;
+        file.write_all(&self.square_color_on.to_be_bytes())?;
 
         file.write_all(b"\0")?;
 
