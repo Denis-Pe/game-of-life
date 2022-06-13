@@ -1,18 +1,25 @@
-struct SquareInfo {
-    [[location(0)]] color: vec4<f32>;
-    [[location(1)]] translation: vec2<f32>;
-    [[location(2)]] scale: f32;
-    [[location(3)]] corner_radius: f32; // --CURRENTLY UNUSED--
+struct SquareColors {
+    [[location(0)]] color_off: vec4<f32>;
+    [[location(1)]] color_on: vec4<f32>;
 };
 
 [[group(0), binding(0)]]
+var<uniform> square_colors: SquareColors;
+
+struct SquareInfo {
+    [[location(0)]] translation: vec2<f32>;
+    [[location(1)]] scale: f32;
+    [[location(2)]] corner_radius: f32; // --TODO: USE THIS--
+};
+
+[[group(0), binding(1)]]
 var<uniform> square_info: SquareInfo;
 
 struct GridZoom {
     [[location(0)]] z: f32;
 };
 
-[[group(0), binding(1)]]
+[[group(0), binding(2)]]
 var<uniform> zoom: GridZoom;
 
 struct VertexOutput {
@@ -47,5 +54,5 @@ fn vs_main(
 // Fragment shader main
 [[stage(fragment)]]
 fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
-    return square_info.color;
+    return square_colors.color_off;
 }
