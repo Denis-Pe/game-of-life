@@ -1,4 +1,5 @@
 mod grid_drawer;
+
 use grid_drawer::*;
 
 mod gui;
@@ -116,7 +117,13 @@ fn main() {
 
                 WindowEvent::MouseWheel { delta, .. } => {
                     if let MouseScrollDelta::LineDelta(_, y) = delta {
-                        grid.change_grid_zoom(y * ZOOMING_CONSTANT);
+                        let dampening_constant = if grid.grid_zoom() <= 0.1 {
+                            ZOOMING_CONSTANT.powf((ZOOMING_CONSTANT / grid.grid_zoom()) * 2.0)
+                        } else {
+                            ZOOMING_CONSTANT
+                        };
+
+                        grid.change_grid_zoom(y * dampening_constant);
                     }
                 }
 

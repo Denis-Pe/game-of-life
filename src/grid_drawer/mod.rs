@@ -338,12 +338,12 @@ impl GridDrawer {
     }
 
     pub fn change_grid_zoom(&mut self, change: f32) {
+        self.grid_zoom.z += change;
         self.queue.write_buffer(
             &self.grid_zoom_buf,
             0,
-            bytemuck::cast_slice(&[self.grid_zoom.z + change]),
+            bytemuck::cast_slice(&[self.grid_zoom.z]),
         );
-        self.grid_zoom.z += change;
     }
 
     pub fn grid_zoom(&self) -> f32 {
