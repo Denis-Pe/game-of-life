@@ -4,7 +4,11 @@ use grid_drawer::*;
 mod gui;
 use gui::*;
 
+mod settings;
+use settings::*;
+
 use winit::{
+    dpi::PhysicalPosition,
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -28,9 +32,14 @@ fn main() {
 
     let mut wgpu_state = pollster::block_on(WgpuState::new(&window));
 
-    let grid = GridDrawer::new(&wgpu_state);
+    let mut settings = Settings::default();
+
+    let mut grid = GridDrawer::new(&wgpu_state, &settings);
 
     let mut gui = Gui::new(&window, &wgpu_state);
+
+    let mut last_cursor: Option<PhysicalPosition<f64>> = None;
+    let mut mouse_held = false;
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -39,19 +48,20 @@ fn main() {
                     Ok(surface_texture) => {
                         let mut results = Vec::new();
 
+                        let backgnd_clr = settings.background_color().to_f32();
                         results.push(wgpu_state.clear_screen(
                             Color {
-                                r: 0.1,
-                                g: 0.1,
-                                b: 0.1,
-                                a: 1.0,
+                                r: backgnd_clr[0] as f64,
+                                g: backgnd_clr[1] as f64,
+                                b: backgnd_clr[2] as f64,
+                                a: backgnd_clr[3] as f64,
                             },
                             &surface_texture,
                         ));
 
                         results.push(grid.draw(&surface_texture));
 
-                        gui.draw(&window, &surface_texture);
+                        gui.draw(&window, &surface_texture, &mut grid, &mut settings);
 
                         if !results.iter().any(|result| result.is_err()) {
                             surface_texture.present()
@@ -90,12 +100,45 @@ fn main() {
                     grid.resize_window(**new_inner_size);
                 }
 
+                WindowEvent::MouseInput { state, button, .. } => {
+                    if let MouseButton::Left = button {
+                        if let ElementState::Pressed = state {
+                            mouse_held = true
+                        } else {
+                            mouse_held = false
+                        }
+                    }
+                }
+
+                WindowEvent::MouseWheel { delta, .. } => {
+                    if let MouseScrollDelta::LineDelta(_, y) = delta {
+                        grid.change_grid_zoom(y * 0.05);
+                    }
+                }
+
+                WindowEvent::CursorMoved {
+                    position: new_position,
+                    ..
+                } => {
+                    if let Some(position) = last_cursor {
+                        let delta = PhysicalPosition {
+                            x: (new_position.x - position.x) as f32,
+                            y: (new_position.y - position.y) as f32,
+                        };
+
+                        if mouse_held {
+                            grid.translate_grid([delta.x * 0.001, -delta.y * 0.001]);
+                        }
+                    }
+                    last_cursor = Some(*new_position);
+                }
+
                 _ => {}
             },
 
             _ => {}
         }
-        
+
         gui.platform_event_handling(&window, &event)
     });
 }
