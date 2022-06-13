@@ -20,7 +20,8 @@ Hence [Rust](https://www.rust-lang.org/) and [wgpu](https://github.com/gfx-rs/wg
 
 #### Current
 
-- Graphical User Interface
+- More setings in the GUI
+- Fix bug where you can still pan the grid when choosing colors
 
 #### Postponed
 
