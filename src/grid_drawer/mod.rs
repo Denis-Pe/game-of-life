@@ -1,4 +1,7 @@
-use wgpu::{util::DeviceExt, *};
+use wgpu::{
+    util::{BufferInitDescriptor, DeviceExt},
+    *,
+};
 
 use gol::*;
 
@@ -7,23 +10,13 @@ use buffers::*;
 
 use std::rc::Rc;
 
-const DEFAULT_GRID_SIZE: u16 = 5; // 5 x 5
+use crate::settings::Settings;
 
-// Conveniency function to not type that conversion
-// all the time
-fn color_to_arr(color: Color) -> [f32; 4] {
-    [
-        color.r as f32,
-        color.g as f32,
-        color.b as f32,
-        color.a as f32,
-    ]
-}
+const DEFAULT_GRID_SIZE: u16 = 5; // 5 x 5
 
 #[derive(Debug)]
 pub struct GridDrawer {
     // The wgpu stuff
-    surface: Rc<Surface>,
     device: Rc<Device>,
     queue: Rc<Queue>,
     render_pipeline: RenderPipeline,
@@ -36,6 +29,7 @@ pub struct GridDrawer {
     instances: Vec<buffers::Instance>,
     instance_buf: Buffer,
     // Uniform buffers
+    sqcolors_buf: Buffer,
     sqinfo: SquareInfo,
     sqinfo_buf: Buffer,
     grid_zoom: GridZoom,
@@ -43,84 +37,116 @@ pub struct GridDrawer {
 }
 
 impl GridDrawer {
-    pub fn new(state: &WgpuState) -> Self {
+    pub fn new(wgpu_state: &WgpuState, settings: &Settings) -> Self {
         // --SHADER AND THE UNIFORM BUFFERS-- \\
 
-        let shader = state
+        let shader = wgpu_state
             .device
             .create_shader_module(&include_wgsl!("../../grid_shaders.wgsl"));
 
+        let sqcolor_off = settings.sqcolor_off().to_f32();
+        let sqcolor_on = settings.sqcolor_on().to_f32();
+
+        let sqcolors = SquareColors {
+            color_off: [
+                sqcolor_off[0],
+                sqcolor_off[1],
+                sqcolor_off[2],
+                sqcolor_off[3],
+            ],
+            color_on: [sqcolor_on[0], sqcolor_on[1], sqcolor_on[2], sqcolor_on[3]],
+        };
+
+        let sqcolors_buf = wgpu_state.device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("square_colors_buffer"),
+            contents: bytemuck::cast_slice(&[sqcolors]),
+            usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
+        });
+
+        // --TODO: ADJUST TO FIT TO SCREEN OR CENTER WITH ZOOM
         let sqinfo = DEFAULT_SQUARE_INFO;
 
-        let sqinfo_buf = state
-            .device
-            .create_buffer_init(&util::BufferInitDescriptor {
-                label: Some("square_information_buffer"),
-                contents: bytemuck::cast_slice(&[sqinfo]),
-                usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
-            });
+        let sqinfo_buf = wgpu_state.device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("square_information_buffer"),
+            contents: bytemuck::cast_slice(&[sqinfo]),
+            usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
+        });
 
+        // --SAME TODO HERE--
         let grid_zoom = GridZoom { z: 1.0 };
 
-        let grid_zoom_buf = state
-            .device
-            .create_buffer_init(&util::BufferInitDescriptor {
-                label: Some("grid_zoom_buffer"),
-                contents: bytemuck::cast_slice(&[grid_zoom]),
-                usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
-            });
+        let grid_zoom_buf = wgpu_state.device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("grid_zoom_buffer"),
+            contents: bytemuck::cast_slice(&[grid_zoom]),
+            usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
+        });
 
         // --BIND GROUP AND RENDER PIPELINE-- \\
 
-        let bind_group_layout = state
-            .device
-            .create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: None,
-                entries: &[
-                    BindGroupLayoutEntry {
-                        // sqinfo
-                        binding: 0,
-                        visibility: ShaderStages::all(),
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            wgpu_state
+                .device
+                .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                    label: None,
+                    entries: &[
+                        BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: ShaderStages::FRAGMENT,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        // grid_zoom
-                        binding: 1,
-                        visibility: ShaderStages::VERTEX,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        BindGroupLayoutEntry {
+                            // sqinfo
+                            binding: 1,
+                            visibility: ShaderStages::all(),
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            });
+                        BindGroupLayoutEntry {
+                            // grid_zoom
+                            binding: 2,
+                            visibility: ShaderStages::VERTEX,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
-        let bind_group = state.device.create_bind_group(&BindGroupDescriptor {
+        let bind_group = wgpu_state.device.create_bind_group(&BindGroupDescriptor {
             label: None,
             layout: &bind_group_layout,
             entries: &[
                 BindGroupEntry {
-                    // sqinfo
                     binding: 0,
+                    resource: sqcolors_buf.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    // sqinfo
+                    binding: 1,
                     resource: sqinfo_buf.as_entire_binding(),
                 },
                 BindGroupEntry {
                     // grid_zoom
-                    binding: 1,
+                    binding: 2,
                     resource: grid_zoom_buf.as_entire_binding(),
                 },
             ],
         });
 
         let render_pipeline_layout =
-            state
+            wgpu_state
                 .device
                 .create_pipeline_layout(&PipelineLayoutDescriptor {
                     label: Some("grid_drawer_render_pipeline_layout"),
@@ -128,7 +154,7 @@ impl GridDrawer {
                     push_constant_ranges: &[],
                 });
 
-        let render_pipeline = state
+        let render_pipeline = wgpu_state
             .device
             .create_render_pipeline(&RenderPipelineDescriptor {
                 label: Some("grid_drawer_render_pipeline"),
@@ -157,8 +183,8 @@ impl GridDrawer {
                     module: &shader,
                     entry_point: "fs_main",
                     targets: &[ColorTargetState {
-                        format: state.config.format,
-                        blend: Some(BlendState::REPLACE),
+                        format: wgpu_state.config.format,
+                        blend: Some(BlendState::ALPHA_BLENDING),
                         write_mask: ColorWrites::ALL,
                     }],
                 }),
@@ -167,21 +193,17 @@ impl GridDrawer {
 
         // --OTHER BUFFERS THAT I COULD CREATE NOW-- \\
 
-        let sqvert_buf = state
-            .device
-            .create_buffer_init(&util::BufferInitDescriptor {
-                label: Some("square_vertex_buffer"),
-                contents: bytemuck::cast_slice(&DEFAULT_SQUARE_VERTICES),
-                usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-            });
+        let sqvert_buf = wgpu_state.device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("square_vertex_buffer"),
+            contents: bytemuck::cast_slice(&DEFAULT_SQUARE_VERTICES),
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+        });
 
-        let sqind_buf = state
-            .device
-            .create_buffer_init(&util::BufferInitDescriptor {
-                label: Some("square_index_buffer"),
-                contents: bytemuck::cast_slice(&DEFAULT_SQUARE_INDICES),
-                usage: BufferUsages::INDEX,
-            });
+        let sqind_buf = wgpu_state.device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("square_index_buffer"),
+            contents: bytemuck::cast_slice(&DEFAULT_SQUARE_INDICES),
+            usage: BufferUsages::INDEX,
+        });
 
         let mut instances = Vec::with_capacity((DEFAULT_GRID_SIZE * DEFAULT_GRID_SIZE) as usize);
 
@@ -193,18 +215,15 @@ impl GridDrawer {
             }
         }
 
-        let instance_buf = state
-            .device
-            .create_buffer_init(&util::BufferInitDescriptor {
-                label: Some("grid_drawer_instance_buffer"),
-                contents: bytemuck::cast_slice(&instances),
-                usage: BufferUsages::VERTEX,
-            });
+        let instance_buf = wgpu_state.device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("grid_drawer_instance_buffer"),
+            contents: bytemuck::cast_slice(&instances),
+            usage: BufferUsages::VERTEX,
+        });
 
         Self {
-            surface: Rc::clone(&state.surface),
-            device: Rc::clone(&state.device),
-            queue: Rc::clone(&state.queue),
+            device: Rc::clone(&wgpu_state.device),
+            queue: Rc::clone(&wgpu_state.queue),
             render_pipeline,
             bind_group,
             sqvert_buf,
@@ -215,6 +234,7 @@ impl GridDrawer {
             instance_buf,
             grid_zoom,
             grid_zoom_buf,
+            sqcolors_buf,
         }
     }
 
@@ -256,27 +276,24 @@ impl GridDrawer {
         Ok(())
     }
 
-    pub fn set_square_color(&mut self, color: Color) {
-        let color_arr = color_to_arr(color);
+    pub fn set_square_color_off(&mut self, color: [f32; 4]) {
         self.queue.write_buffer(
-            &self.sqinfo_buf,
-            SQINFO_COLOR_OFFSET,
-            bytemuck::cast_slice(&color_arr),
+            &self.sqcolors_buf,
+            SQCOLOR_OFF_OFFSET,
+            bytemuck::cast_slice(&color),
         );
-        self.sqinfo.color = color_arr;
     }
 
-    pub fn set_square_translation(&mut self, translation: [f32; 2]) {
+    pub fn set_square_color_on(&mut self, color: [f32; 4]) {
         self.queue.write_buffer(
-            &self.sqinfo_buf,
-            SQINFO_TRANSLATION_OFFSET,
-            bytemuck::cast_slice(&translation),
+            &self.sqcolors_buf,
+            SQCOLOR_ON_OFFSET,
+            bytemuck::cast_slice(&color),
         );
-        self.sqinfo.translation = translation;
     }
 
     /// Will perform addition of the `translation` to the current translation
-    pub fn translate_square(&mut self, translation: [f32; 2]) {
+    pub fn translate_grid(&mut self, translation: [f32; 2]) {
         self.sqinfo.translation[0] += translation[0];
         self.sqinfo.translation[1] += translation[1];
         self.queue.write_buffer(
@@ -357,15 +374,18 @@ impl GridDrawer {
         }
     }
 
-    pub fn resize_grid(&mut self, grid_size: u32) {
-        for row in 0..grid_size {
-            for column in 0..grid_size {
+    pub fn resize_grid(&mut self, x: u32, y: u32) {
+        self.instances.clear();
+
+        for row in 0..y {
+            for column in 0..x {
                 self.instances
                     .push(buffers::Instance { pos: [column, row] });
             }
         }
 
-        self.instance_buf = self.device.create_buffer_init(&util::BufferInitDescriptor {
+        // recreate instance buffer
+        self.instance_buf = self.device.create_buffer_init(&BufferInitDescriptor {
             label: Some("grid_drawer_instance_buffer"),
             contents: bytemuck::cast_slice(&self.instances),
             usage: BufferUsages::VERTEX,
