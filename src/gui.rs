@@ -11,25 +11,12 @@ use std::rc::Rc;
 use crate::grid_drawer::*;
 use crate::settings::*;
 
-struct U32CharsFilter;
-impl InputTextCallbackHandler for U32CharsFilter {
-    fn char_filter(&mut self, c: char) -> Option<char> {
-        if "1234567890".chars().any(|character| character == c) {
-            Some(c)
-        } else {
-            None
-        }
-    }
-}
-
 pub struct Gui {
     device: Rc<Device>,
     queue: Rc<Queue>,
     context: Context,
     platform: WinitPlatform,
     renderer: Renderer,
-    grid_columns: String,
-    grid_rows: String,
     last_cursor: Option<MouseCursor>,
 }
 
@@ -74,30 +61,95 @@ impl Gui {
             context,
             platform,
             renderer,
-            grid_columns: String::new(),
-            grid_rows: String::new(),
             last_cursor: None,
         }
     }
 
+    /// Returns whether any of the colors were changed or not
+    fn color_widgets(ui: &Ui, grid: &mut GridDrawer, settings: &mut Settings) -> bool {
+        let mut sqcolor_off = settings.sqcolor_off().to_f32();
+        let mut sqcolor_on = settings.sqcolor_on().to_f32();
+        let mut backgnd_clr = settings.background_color().to_f32();
+
+        let mut overall_change = false;
+
+        ui.text("Square Color When Off");
+        let changed = ColorEdit::new("On Squares Color Editing", &mut sqcolor_off)
+            .label(false)
+            .alpha_bar(true)
+            .build(&ui);
+        if changed {
+            settings.set_sqcolor_off(RGBA::from_f32(sqcolor_off));
+            grid.set_square_color_off(sqcolor_off);
+            overall_change = true;
+        }
+
+        ui.text("Square Color When On");
+        let changed = ColorEdit::new("Off Squares Color Editing", &mut sqcolor_on)
+            .label(false)
+            .alpha_bar(true)
+            .build(&ui);
+        if changed {
+            settings.set_sqcolor_on(RGBA::from_f32(sqcolor_on));
+            grid.set_square_color_on(sqcolor_on);
+            overall_change = true;
+        }
+
+        ui.text("Background Color");
+        let changed = ColorEdit::new("Background Color Editing", &mut backgnd_clr)
+            .label(false)
+            .alpha(false)
+            .build(&ui);
+        if changed {
+            settings.set_background_color(RGBA::from_f32(backgnd_clr));
+            overall_change = true;
+        }
+
+        overall_change
+    }
+
+    fn grid_dimensions_widgets(ui: &Ui, grid: &mut GridDrawer, settings: &mut Settings) {
+        let mut columns = settings.squares_x() as i32;
+        let mut rows = settings.squares_y() as i32;
+
+        ui.text("Grid X Dimension");
+        InputInt::new(&ui, "Cols", &mut columns)
+            .enter_returns_true(true)
+            .build();
+        if columns <= 4 {
+            columns = 5
+        }
+
+        ui.text("Grid Y Dimension");
+        InputInt::new(&ui, "Rows", &mut rows)
+            .enter_returns_true(true)
+            .build();
+        if rows <= 4 {
+            rows = 5
+        }
+
+        grid.resize_grid(columns as u32, rows as u32);
+        settings.set_squares_x(columns as u16);
+        settings.set_squares_y(rows as u16);
+    }
+
+    /// Returns whether the colors were changed
     pub fn draw(
         &mut self,
         window: &winit::window::Window,
         surface_texture: &SurfaceTexture,
         grid: &mut GridDrawer,
         settings: &mut Settings,
-    ) {
+    ) -> bool {
         self.platform
             .prepare_frame(self.context.io_mut(), &window)
             .expect("Fatal error: failed to prepare frame");
 
         let ui = self.context.frame();
 
-        {
-            let mut sqcolor_off = settings.sqcolor_off().to_f32();
-            let mut sqcolor_on = settings.sqcolor_on().to_f32();
-            let mut backgnd_clr = settings.background_color().to_f32();
+        let mut colors_changed = false;
 
+        {
             let left_panel = Window::new("is it you?!");
             left_panel
                 .title_bar(false)
@@ -109,71 +161,13 @@ impl Gui {
                 .movable(false)
                 .resizable(false)
                 .build(&ui, || {
-                    // --COLORS-- \\s
-
-                    ui.text("Square Color When Off");
-                    let changed = ColorEdit::new("On Squares Color Editing", &mut sqcolor_off)
-                        .label(false)
-                        .build(&ui);
-
-                    if changed {
-                        settings.set_sqcolor_off(RGBA::from_f32(sqcolor_off));
-                        grid.set_square_color_off(sqcolor_off);
-                    }
-
-                    ui.text("Square Color When On");
-                    let changed = ColorEdit::new("Off Squares Color Editing", &mut sqcolor_on)
-                        .label(false)
-                        .build(&ui);
-
-                    if changed {
-                        settings.set_sqcolor_on(RGBA::from_f32(sqcolor_on));
-                        grid.set_square_color_on(sqcolor_on);
-                    }
-
-                    ui.text("Background Color");
-                    let changed = ColorEdit::new("Background Color Editing", &mut backgnd_clr)
-                        .label(false)
-                        .build(&ui);
-
-                    if changed {
-                        settings.set_background_color(RGBA::from_f32(backgnd_clr));
-                    }
+                    colors_changed = Self::color_widgets(&ui, grid, settings);
 
                     ui.separator();
 
-                    // --GRID SIZE-- \\
+                    Self::grid_dimensions_widgets(&ui, grid, settings);
 
-                    ui.text("Grid X Dimension");
-                    let x_changed = InputText::new(&ui, "Cols", &mut self.grid_columns)
-                        .hint("Columns")
-                        .enter_returns_true(true)
-                        .callback(InputTextCallback::CHAR_FILTER, U32CharsFilter)
-                        .build();
-
-                    ui.text("Grid Y Dimension");
-                    let y_changed = InputText::new(&ui, "Rows", &mut self.grid_rows)
-                        .hint("Rows")
-                        .enter_returns_true(true)
-                        .callback(InputTextCallback::CHAR_FILTER, U32CharsFilter)
-                        .build();
-
-                    if x_changed || y_changed {
-                        let old_x = settings.squares_x() as u32;
-                        let old_y = settings.squares_y() as u32;
-
-                        let mut new_x = old_x;
-                        let mut new_y = old_y;
-
-                        if let Ok(columns) = self.grid_columns.parse::<u32>() {
-                            new_x = columns
-                        }
-                        if let Ok(rows) = self.grid_rows.parse::<u32>() {
-                            new_y = rows
-                        }
-
-                        grid.resize_grid(new_x, new_y)
-                    }
+                    ui.separator();
                 });
         }
 
@@ -217,6 +211,8 @@ impl Gui {
         drop(render_pass);
 
         self.queue.submit(Some(encoder.finish()));
+
+        colors_changed
     }
 
     pub fn platform_event_handling(
