@@ -133,8 +133,16 @@ impl Settings {
         self.squares_x
     }
 
+    pub fn set_squares_x(&mut self, new: u16) {
+        self.squares_x = new;
+    }
+
     pub fn squares_y(&self) -> u16 {
         self.squares_y
+    }
+
+    pub fn set_squares_y(&mut self, new: u16) {
+        self.squares_y = new;
     }
 
     pub fn set_background_color(&mut self, new: RGBA) {
