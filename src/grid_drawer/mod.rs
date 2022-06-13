@@ -292,6 +292,16 @@ impl GridDrawer {
         );
     }
 
+    pub fn set_grid_translation(&mut self, translation: [f32; 2]) {
+        self.sqinfo.translation[0] = translation[0];
+        self.sqinfo.translation[1] = translation[1];
+        self.queue.write_buffer(
+            &self.sqinfo_buf,
+            SQINFO_TRANSLATION_OFFSET,
+            bytemuck::cast_slice(&self.sqinfo.translation),
+        );
+    }
+
     /// Will perform addition of the `translation` to the current translation
     pub fn translate_grid(&mut self, translation: [f32; 2]) {
         self.sqinfo.translation[0] += translation[0];
@@ -336,6 +346,11 @@ impl GridDrawer {
         self.grid_zoom.z += change;
     }
 
+    pub fn grid_zoom(&self) -> f32 {
+        println!("{}", self.grid_zoom.z);
+        self.grid_zoom.z
+    }
+
     fn write_sqbuffer_vertices(&self, offsets: &[BufferAddress], value: f32) {
         for offset in offsets.iter() {
             self.queue
@@ -360,17 +375,12 @@ impl GridDrawer {
 
         let aspect_ratio = new_size.width as f32 / new_size.height as f32;
 
-        let mut right = DEFAULT_RIGHT;
-        let mut lower = DEFAULT_LOWER;
-
         if aspect_ratio > 1.0 {
             self.write_sqbuffer_vertices(&BUF_LEFT_X_OFFSETS, DEFAULT_LEFT / aspect_ratio);
             self.write_sqbuffer_vertices(&BUF_RIGHT_X_OFFSETS, DEFAULT_RIGHT / aspect_ratio);
-            right /= aspect_ratio;
         } else {
             self.write_sqbuffer_vertices(&BUF_UPPER_Y_OFFSETS, DEFAULT_UPPER * aspect_ratio);
             self.write_sqbuffer_vertices(&BUF_LOWER_Y_OFFSETS, DEFAULT_LOWER * aspect_ratio);
-            lower *= aspect_ratio;
         }
     }
 
