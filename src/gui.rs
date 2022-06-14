@@ -129,8 +129,7 @@ impl Gui {
         }
 
         grid.resize_grid(columns as u32, rows as u32);
-        settings.set_squares_x(columns as u16);
-        settings.set_squares_y(rows as u16);
+        settings.resize_grid(columns as u16, rows as u16);
     }
 
     /// Returns whether the colors were changed

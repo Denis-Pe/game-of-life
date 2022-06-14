@@ -1,5 +1,5 @@
 mod golfile;
-use golfile::*;
+pub use golfile::*;
 
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct RGBA {
@@ -88,7 +88,10 @@ impl Default for StartingView {
 
 #[derive(Debug, Clone)]
 pub struct Settings {
-    squares: Vec<bool>, // TODO: ACTUAL USAGE
+    /// ### Order
+    /// Row major order
+    /// i.e. squares\[row\]\[column\]
+    squares: Vec<Vec<bool>>, // TODO: ACTUAL USAGE
     squares_x: u16,
     squares_y: u16,
     updates_sec: f32,
@@ -101,7 +104,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            squares: vec![false; 5 * 5],
+            squares: vec![vec![false; 5]; 5],
             squares_x: 5,
             squares_y: 5,
             updates_sec: 2.0,
@@ -133,16 +136,22 @@ impl Settings {
         self.squares_x
     }
 
-    pub fn set_squares_x(&mut self, new: u16) {
-        self.squares_x = new;
-    }
-
     pub fn squares_y(&self) -> u16 {
         self.squares_y
     }
 
-    pub fn set_squares_y(&mut self, new: u16) {
-        self.squares_y = new;
+    pub fn resize_grid(&mut self, columns: u16, rows: u16) {
+        self.squares_x = columns;
+        self.squares_y = rows;
+
+        self.squares.clear();
+
+        for row in 0..self.squares_y {
+            self.squares.push(Vec::new());
+            for column in 0..self.squares_x {
+                self.squares[row as usize].push(false);
+            }
+        }
     }
 
     pub fn set_background_color(&mut self, new: RGBA) {
