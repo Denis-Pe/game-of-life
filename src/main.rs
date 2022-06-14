@@ -44,7 +44,8 @@ fn main() {
 
     let mut last_cursor: Option<PhysicalPosition<f64>> = None;
     let mut mouse_held = false;
-    let mut control = false;
+    let mut ctrl = false;
+    let mut color_change = false; // If it is true then you should not be able to pan
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -66,7 +67,7 @@ fn main() {
 
                         results.push(grid.draw(&surface_texture));
 
-                        gui.draw(&window, &surface_texture, &mut grid, &mut settings);
+                        color_change = gui.draw(&window, &surface_texture, &mut grid, &mut settings);
 
                         if !results.iter().any(|result| result.is_err()) {
                             surface_texture.present()
@@ -137,7 +138,7 @@ fn main() {
                             y: (new_position.y - position.y) as f32,
                         };
 
-                        if mouse_held {
+                        if mouse_held && !color_change {
                             let zoom_multiplier = if grid.grid_zoom() > 1.0 {
                                 1.0
                             } else {
@@ -153,9 +154,9 @@ fn main() {
                     last_cursor = Some(*new_position);
                 }
 
-                WindowEvent::ModifiersChanged(state) => control = state.ctrl(),
+                WindowEvent::ModifiersChanged(state) => ctrl = state.ctrl(),
 
-                WindowEvent::KeyboardInput { input, .. } if control => {
+                WindowEvent::KeyboardInput { input, .. } if ctrl => {
                     if let Some(VirtualKeyCode::R) = input.virtual_keycode {
                         grid.set_grid_zoom(1.0);
                         grid.set_grid_translation([0.0, 0.0]);
