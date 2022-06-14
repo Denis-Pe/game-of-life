@@ -7,6 +7,7 @@ use gol::*;
 
 mod buffers;
 use buffers::*;
+use winit::dpi::PhysicalPosition;
 
 use std::rc::Rc;
 
@@ -25,7 +26,6 @@ pub struct GridDrawer {
     sqvert_buf: Buffer,
     sqind_buf: Buffer,
     // Vector of positions (x, y)
-    // This also keeps track of the length of the grid implicitly
     instances: Vec<buffers::Instance>,
     instance_buf: Buffer,
     // Uniform buffers
@@ -34,6 +34,11 @@ pub struct GridDrawer {
     sqinfo_buf: Buffer,
     grid_zoom: GridZoom,
     grid_zoom_buf: Buffer,
+    // Miscellanenous
+    /// *NOTE*: This is before taking the zoom into account
+    sq_width: f32,
+    /// *NOTE*: This is before taking the zoom into account
+    sq_height: f32,
 }
 
 impl GridDrawer {
@@ -235,6 +240,8 @@ impl GridDrawer {
             grid_zoom,
             grid_zoom_buf,
             sqcolors_buf,
+            sq_width: DEFAULT_SQUARE_VERTICES[0].pos[0].abs() * 2.0,
+            sq_height: DEFAULT_SQUARE_VERTICES[0].pos[1].abs() * 2.0,
         }
     }
 
@@ -274,6 +281,50 @@ impl GridDrawer {
         self.queue.submit(std::iter::once(encoder.finish()));
 
         Ok(())
+    }
+
+    pub fn square_clicked(
+        &self,
+        mut click_position: PhysicalPosition<f64>,
+        settings: &Settings,
+        window: &winit::window::Window,
+    ) -> Option<[u32; 2]> {
+        // Translating from winit's coordinate system
+        // to wgpu's coordinate system
+
+        click_position.x -= window.inner_size().width as f64 / 2.0;
+        click_position.y -= window.inner_size().height as f64 / 2.0;
+
+        click_position.y *= -1.0;
+
+        click_position.x /= window.inner_size().width as f64 / 2.0;
+        click_position.y /= window.inner_size().height as f64 / 2.0;
+
+        // Calculating which square was clicked
+
+        click_position.x -= self.sqinfo.translation[0] as f64;
+        click_position.y -= self.sqinfo.translation[1] as f64;
+
+        let f64_gzoom = self.grid_zoom.z as f64;
+        click_position.x /= self.sq_width as f64 * f64_gzoom;
+        click_position.y /= self.sq_height as f64 * f64_gzoom;
+
+        let result = [
+            click_position.x.round() as u32,
+            click_position.y.round() as u32,
+        ];
+
+        println!("{:?}\t{:?}", click_position, result);
+
+        if result[0] <= settings.squares_x() as u32 - 1
+            && result[1] <= settings.squares_y() as u32 - 1
+            && click_position.x >= -0.5 * f64_gzoom
+            && click_position.y >= -0.5 * f64_gzoom
+        {
+            Some(result)
+        } else {
+            None
+        }
     }
 
     pub fn set_square_color_off(&mut self, color: [f32; 4]) {
@@ -357,7 +408,7 @@ impl GridDrawer {
         }
     }
 
-    pub fn resize_window(&self, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize_window(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         // The offsets to reach the x components of the vertices that are to the left
         const BUF_LEFT_X_OFFSETS: [BufferAddress; 2] = [0, 8];
         // Same but right
@@ -377,9 +428,11 @@ impl GridDrawer {
         if aspect_ratio > 1.0 {
             self.write_sqbuffer_vertices(&BUF_LEFT_X_OFFSETS, DEFAULT_LEFT / aspect_ratio);
             self.write_sqbuffer_vertices(&BUF_RIGHT_X_OFFSETS, DEFAULT_RIGHT / aspect_ratio);
+            self.sq_width = 2.0 * DEFAULT_RIGHT / aspect_ratio;
         } else {
             self.write_sqbuffer_vertices(&BUF_UPPER_Y_OFFSETS, DEFAULT_UPPER * aspect_ratio);
             self.write_sqbuffer_vertices(&BUF_LOWER_Y_OFFSETS, DEFAULT_LOWER * aspect_ratio);
+            self.sq_height = 2.0 * DEFAULT_UPPER / aspect_ratio;
         }
     }
 
