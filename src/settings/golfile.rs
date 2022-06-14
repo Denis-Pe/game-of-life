@@ -176,11 +176,21 @@ impl Settings {
             return Err(GOLFileError::NotValidFile);
         }
 
-        for byte in bytes.iter().skip(PRELUDE_LENGTH) {
-            output.squares.push(*byte != 0); // *byte as bool
+        for _ in 0..output.squares_y {
+            output.squares.push(Vec::new())
         }
 
-        if output.squares.len() != output.squares_x as usize * output.squares_y as usize {
+        let mut row = 0;
+        for (i, byte) in bytes.iter().skip(PRELUDE_LENGTH).enumerate() {
+            output.squares[row].push(*byte != 0); // a.k.a *byte as bool
+            if (i+1) % output.squares_x as usize == 0 {
+                row += 1
+            }
+        }
+
+        if output.squares[0].len() * output.squares.len()
+            != output.squares_x as usize * output.squares_y as usize
+        {
             return Err(GOLFileError::UnexpectedEndOfBytes);
         }
 
@@ -209,10 +219,87 @@ impl Settings {
 
         file.write_all(b"\\gol!/")?;
 
-        for square in self.squares.iter() {
-            file.write_all(&[*square as u8])?;
+        for row in self.squares.iter() {
+            for square in row.iter() {
+                file.write_all(&[*square as u8])?;
+            }
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fs::remove_file;
+
+    const FIRST_T_FILE: &str = "first_tier_test.gol";
+    const FIRST_T_SIZE: u16 = 5;
+    #[test]
+    fn create_write_read_1tier() {
+        {
+            let mut settings = Settings::default();
+            settings.resize_grid(FIRST_T_SIZE, FIRST_T_SIZE);
+
+            let mut success = false;
+            if let Ok(()) = settings.write_in_file(FIRST_T_FILE) {
+                success = true
+            }
+            assert!(success);
+        }
+        {
+            let settings = Settings::read_from_file(FIRST_T_FILE).unwrap();
+
+            assert_eq!(settings.squares_x(), FIRST_T_SIZE);
+            assert_eq!(settings.squares_x(), FIRST_T_SIZE);
+        }
+        remove_file(FIRST_T_FILE).unwrap();
+    }
+
+    const SECOND_T_FILE: &str = "second_tier_test.gol";
+    const SECOND_T_SIZE: u16 = 50;
+    #[test]
+    fn create_write_read_2tier() {
+        {
+            let mut settings = Settings::default();
+            settings.resize_grid(SECOND_T_SIZE, SECOND_T_SIZE);
+
+            let mut success = false;
+            if let Ok(()) = settings.write_in_file(SECOND_T_FILE) {
+                success = true
+            }
+            assert!(success);
+        }
+        {
+            let settings = Settings::read_from_file(SECOND_T_FILE).unwrap();
+
+            assert_eq!(settings.squares_x(), SECOND_T_SIZE);
+            assert_eq!(settings.squares_x(), SECOND_T_SIZE);
+        }
+        remove_file(SECOND_T_FILE).unwrap();
+    }
+
+    const THIRD_T_FILE: &str = "third_tier_test.gol";
+    const THIRD_T_SIZE: u16 = 500;
+    #[test]
+    fn create_write_read_3tier() {
+        {
+            let mut settings = Settings::default();
+            settings.resize_grid(THIRD_T_SIZE, THIRD_T_SIZE);
+
+            let mut success = false;
+            if let Ok(()) = settings.write_in_file(THIRD_T_FILE) {
+                success = true
+            }
+            assert!(success);
+        }
+        {
+            let settings = Settings::read_from_file(THIRD_T_FILE).unwrap();
+
+            assert_eq!(settings.squares_x(), THIRD_T_SIZE);
+            assert_eq!(settings.squares_x(), THIRD_T_SIZE);
+        }
+        remove_file(THIRD_T_FILE).unwrap();
     }
 }
