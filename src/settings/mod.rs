@@ -148,7 +148,7 @@ impl Settings {
 
         for row in 0..self.squares_y {
             self.squares.push(Vec::new());
-            for column in 0..self.squares_x {
+            for _column in 0..self.squares_x {
                 self.squares[row as usize].push(false);
             }
         }
