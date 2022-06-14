@@ -20,8 +20,8 @@ Hence [Rust](https://www.rust-lang.org/) and [wgpu](https://github.com/gfx-rs/wg
 
 #### Current
 
-- More setings in the GUI
-- Fix bug where you can still pan the grid when choosing colors
+- Better sizing of the squares, and ***then***
+- Be able to turn squares on and off
 
 #### Postponed
 
