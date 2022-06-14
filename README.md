@@ -20,7 +20,6 @@ Hence [Rust](https://www.rust-lang.org/) and [wgpu](https://github.com/gfx-rs/wg
 
 #### Current
 
-- Better sizing of the squares, and ***then***
 - Be able to turn squares on and off
 
 #### Postponed
