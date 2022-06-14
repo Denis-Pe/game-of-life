@@ -57,7 +57,7 @@ pub const SQINFO_CORNER_RADIUS_OFFSET: BufferAddress = 12;
 
 pub const DEFAULT_SQUARE_INFO: SquareInfo = SquareInfo {
     translation: [0.0, 0.0],
-    scale: 0.95,
+    scale: 0.85,
     corner_radius: 1.0,
 };
 
