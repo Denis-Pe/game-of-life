@@ -132,12 +132,8 @@ impl Default for Settings {
 }
 
 impl Settings {
-    pub fn squares_x(&self) -> u16 {
-        self.squares_x
-    }
-
-    pub fn squares_y(&self) -> u16 {
-        self.squares_y
+    pub fn toggle_square(&mut self, column: usize, row: usize) {
+        self.squares[row][column] = !self.squares[row][column];
     }
 
     pub fn resize_grid(&mut self, columns: u16, rows: u16) {
@@ -152,6 +148,14 @@ impl Settings {
                 self.squares[row as usize].push(false);
             }
         }
+    }
+
+    pub fn squares_x(&self) -> u16 {
+        self.squares_x
+    }
+
+    pub fn squares_y(&self) -> u16 {
+        self.squares_y
     }
 
     pub fn set_background_color(&mut self, new: RGBA) {
