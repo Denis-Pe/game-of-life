@@ -183,7 +183,7 @@ impl Settings {
         let mut row = 0;
         for (i, byte) in bytes.iter().skip(PRELUDE_LENGTH).enumerate() {
             output.squares[row].push(*byte != 0); // a.k.a *byte as bool
-            if (i+1) % output.squares_x as usize == 0 {
+            if (i + 1) % output.squares_x as usize == 0 {
                 row += 1
             }
         }
@@ -252,7 +252,7 @@ mod tests {
             let settings = Settings::read_from_file(FIRST_T_FILE).unwrap();
 
             assert_eq!(settings.squares_x(), FIRST_T_SIZE);
-            assert_eq!(settings.squares_x(), FIRST_T_SIZE);
+            assert_eq!(settings.squares_y(), FIRST_T_SIZE);
         }
         remove_file(FIRST_T_FILE).unwrap();
     }
@@ -275,7 +275,7 @@ mod tests {
             let settings = Settings::read_from_file(SECOND_T_FILE).unwrap();
 
             assert_eq!(settings.squares_x(), SECOND_T_SIZE);
-            assert_eq!(settings.squares_x(), SECOND_T_SIZE);
+            assert_eq!(settings.squares_y(), SECOND_T_SIZE);
         }
         remove_file(SECOND_T_FILE).unwrap();
     }
@@ -298,8 +298,32 @@ mod tests {
             let settings = Settings::read_from_file(THIRD_T_FILE).unwrap();
 
             assert_eq!(settings.squares_x(), THIRD_T_SIZE);
-            assert_eq!(settings.squares_x(), THIRD_T_SIZE);
+            assert_eq!(settings.squares_y(), THIRD_T_SIZE);
         }
         remove_file(THIRD_T_FILE).unwrap();
+    }
+
+    const FOURTH_T_FILE: &str = "fourth_tier_test.gol";
+    const FOURTH_T_COLUMNS: u16 = 1000;
+    const FOURTH_T_ROWS: u16 = 500;
+    #[test]
+    fn create_write_read_4tier() {
+        {
+            let mut settings = Settings::default();
+            settings.resize_grid(FOURTH_T_COLUMNS, FOURTH_T_ROWS);
+
+            let mut success = false;
+            if let Ok(()) = settings.write_in_file(FOURTH_T_FILE) {
+                success = true
+            }
+            assert!(success);
+        }
+        {
+            let settings = Settings::read_from_file(FOURTH_T_FILE).unwrap();
+
+            assert_eq!(settings.squares_x(), FOURTH_T_COLUMNS);
+            assert_eq!(settings.squares_y(), FOURTH_T_ROWS);
+        }
+        remove_file(FOURTH_T_FILE).unwrap();
     }
 }
